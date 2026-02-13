@@ -9,8 +9,8 @@ from app.models import Settings, Trade, Event
 
 
 def get_or_create_settings(session: Session) -> Settings:
-    s = session.exec(select(Settings).where(Settings.id == 1)).first()
-    if not s:
+    s = session.get(Settings, 1)
+    if s is None:
         s = Settings(id=1)
         session.add(s)
         session.commit()
@@ -39,8 +39,9 @@ def add_event(session: Session, level: str, type_: str, message: str) -> Event:
 
 
 def list_events(session: Session, limit: int = 100):
-    q = select(Event).order_by(Event.id.desc()).limit(limit)
-    return list(reversed(session.exec(q).all()))
+    stmt = select(Event).order_by(Event.id.asc()).limit(limit)
+    return list(session.exec(stmt))
+
 
 
 def add_trade(session: Session, t: Trade) -> Trade:
@@ -53,11 +54,11 @@ def add_trade(session: Session, t: Trade) -> Trade:
 def update_trade(
     session: Session,
     trade_id: int,
-    **fields,
+    **fields
 ) -> Trade:
-    t = session.exec(select(Trade).where(Trade.id == trade_id)).first()
+    t = session.get(Trade, trade_id)
     if not t:
-        raise ValueError(f"Trade not found: {trade_id}")
+        raise ValueError("Trade not found")
     for k, v in fields.items():
         if hasattr(t, k):
             setattr(t, k, v)
@@ -68,15 +69,15 @@ def update_trade(
 
 
 def list_trades(session: Session, limit: int = 50):
-    q = select(Trade).order_by(Trade.id.desc()).limit(limit)
-    return list(reversed(session.exec(q).all()))
+    stmt = select(Trade).order_by(Trade.id.desc()).limit(limit)
+    return list(session.exec(stmt))
 
 
 def get_open_trade(session: Session, symbol: str) -> Optional[Trade]:
-    q = (
+    stmt = (
         select(Trade)
-        .where(Trade.symbol == symbol)
-        .where(Trade.status == "OPEN")
+        .where(Trade.symbol == symbol, Trade.status == "OPEN")
         .order_by(Trade.id.desc())
+        .limit(1)
     )
-    return session.exec(q).first()
+    return session.exec(stmt).first()

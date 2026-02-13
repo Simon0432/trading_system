@@ -10,45 +10,43 @@ def _ema(values: list[float], period: int) -> list[float]:
         ema.append(v * k + ema[-1] * (1 - k))
     return ema
 
-
-def _rsi(values: list[float], period: int = 14) -> float | None:
-    if len(values) < period + 1:
-        return None
-    gains = 0.0
-    losses = 0.0
-    for i in range(-period, 0):
-        diff = values[i] - values[i - 1]
-        if diff >= 0:
-            gains += diff
-        else:
-            losses -= diff
-    if losses == 0:
-        return 100.0
-    rs = gains / losses
-    return 100.0 - (100.0 / (1.0 + rs))
-
-
 def decide_signal(closes: list[float]) -> str:
-    if len(closes) < 60:
-        return "HOLD"
-    ema20 = _ema(closes, 20)
-    ema50 = _ema(closes, 50)
-    if ema20[-1] > ema50[-1]:
+    import random
+
+    # 20% шанс открыть сделку каждый цикл
+    r = random.random()
+
+    if r < 0.10:
         return "BUY"
-    if ema20[-1] < ema50[-1]:
+    elif r < 0.20:
         return "SELL"
-    return "HOLD"
+    else:
+        return "HOLD"
 
-    # тренд вверх: цена чуть ниже EMA20 (откат) + RSI не перегрет
-    if e20 > e50:
-        pullback = price <= e20 * 1.001  # около EMA20
-        if pullback and rsi < 60:
-            return "BUY"
 
-    # тренд вниз: цена чуть выше EMA20 (откат вверх) + RSI не перепродан
-    if e20 < e50:
-        pullback = price >= e20 * 0.999
-        if pullback and rsi > 40:
-            return "SELL"
+
+    # --- Настройки теста ---
+    N = 3                 # сколько свечей назад сравниваем
+    THRESH = 0.15         # порог движения в % (0.15% даст сигналы часто на BTC 5m)
+
+    last = float(closes[-1])
+    prev = float(closes[-1 - N])
+    if prev <= 0:
+        return "HOLD"
+
+    change_pct = (last - prev) / prev * 100.0
+
+    # --- Фильтр тренда (чтобы не ловить совсем шум) ---
+    ema50 = _ema(closes, 50)
+    if not ema50:
+        return "HOLD"
+    trend_up = ema50[-1] > ema50[-2]
+    trend_down = ema50[-1] < ema50[-2]
+
+    # --- Сигнал ---
+    if change_pct >= THRESH and trend_up:
+        return "BUY"
+    if change_pct <= -THRESH and trend_down:
+        return "SELL"
 
     return "HOLD"

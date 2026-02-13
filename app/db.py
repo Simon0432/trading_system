@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, create_engine
 
-DB_URL = "sqlite:///./trading.db"
-engine = create_engine(DB_URL, echo=False)
+# файл будет рядом с main.py (корень проекта)
+engine = create_engine("sqlite:///trading.db", echo=False)
 
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
-
-
-def get_session():
-    with Session(engine) as session:
-        yield session

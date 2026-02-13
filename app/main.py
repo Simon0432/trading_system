@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, Depends
-from sqlmodel import Session
-
-from app.db import init_db, get_session
-from app import repo
-from app.bot_engine import bot
+from fastapi import FastAPI, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from fastapi import Request
+from sqlmodel import Session
 
+from app.db import init_db, engine
+from app import repo
+from app.bot_engine import bot
+
+
+app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 
-app = FastAPI(title="Trading Bot API")
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 
 @app.on_event("startup")
@@ -21,14 +24,14 @@ def on_startup():
     init_db()
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
 @app.get("/", response_class=HTMLResponse)
 def ui(request: Request):
     return templates.TemplateResponse("ui.html", {"request": request})
 
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/settings")
